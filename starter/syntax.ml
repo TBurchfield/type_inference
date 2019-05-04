@@ -4,6 +4,7 @@ type typ =
   | Nat | Bool 
   | Arrow of (typ * typ)
   | TypeVar of string
+  | Univ of (string * typ)
 
 type term =
   | Zero | Succ of term | Pred of term | IsZero of term

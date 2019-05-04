@@ -14,10 +14,10 @@ let rec free_vars (t:term) =
     | Succ t1 | Pred t1 | IsZero t1 | Fix t1 -> free_vars t1
     | If (t1, t2, t3) -> fold_union (List.map free_vars [t1; t2; t3])
     | Var x -> SS.singleton x
-    | TypedLambda (x, _, t1) -> SS.remove x (free_vars t1) 
+    | TypedLambda (x, _, t1) -> SS.remove x (free_vars t1)
     | App (t1, t2) -> SS.union (free_vars t1) (free_vars t2)
     | Let (x, t1, t2) -> SS.union (free_vars t1) (SS.remove x (free_vars t2))
-    | Lambda (_, _) -> raise (Parse_error "argument must have type")
+    | Lambda (x1, t1) -> SS.remove x1 (free_vars t1)
 
 let rec subst (x:string) (v:term) (t:term) =
   match t with
@@ -33,7 +33,8 @@ let rec subst (x:string) (v:term) (t:term) =
     | App (t1, t2) -> App (subst x v t1, subst x v t2)
     | Let (x1, t2, t3) when x1 = x -> Let (x1, subst x v t2, t3)
     | Let (x1, t2, t3) -> Let (x1, subst x v t2, subst x v t3)
-    | Lambda (_, _) -> raise (Parse_error "argument must have type")
+    | Lambda (x1, t1) when x = x1 -> t
+    | Lambda (x1, t1) -> Lambda (x1, subst x v t1)
 
 let rec eval_term (t:term) =
   match t with
@@ -59,19 +60,23 @@ let rec eval_term (t:term) =
       | _ -> raise (Eval_error "can't condition on non-boolean"))
 
     | TypedLambda _ -> t
+    | Lambda _ -> t
 
     | App (t1, t2) -> (match eval_term t1 with 
        | TypedLambda (x11, _, t12) -> let v2 = eval_term t2 in eval_term (subst x11 v2 t12)
+       | Lambda (x11, t12) -> let v2 = eval_term t2 in eval_term (subst x11 v2 t12)
        | _ as v1 -> raise (Eval_error ("application of non-function: " ^ format_term v1)))
 
     | Let (x, t1, t2) -> let v1 = eval_term t1 in eval_term (subst x v1 t2)
     
     | Fix t1 -> (match eval_term t1 with
        | TypedLambda (x11, _, t12) as v1 -> subst x11 (Fix v1) t12
+       | Lambda (x11, t12) as v1 -> subst x11 (Fix v1) t12
        | _ -> raise (Eval_error "fix must be applied to function"))
 
     | _ -> raise (Eval_error ("invalid expression " ^ format_term t))
 
+(*
 let rec typecheck (env: (string * typ) list) (t:term) : typ =
   match t with
     | Zero -> Nat
@@ -112,15 +117,4 @@ let rec typecheck (env: (string * typ) list) (t:term) : typ =
                   | _ -> raise (Type_error "fix requires an argument of type X -> X"))
 
     | _ -> raise (Eval_error "aieeeee")
-
-let () = read_lines "pcf> " (fun line ->
-  try
-    let t = parse_term line in
-      if SS.is_empty (free_vars t) then
-        let tau = typecheck [] t in
-        let v = eval_term t in
-          print_string (format_term v ^ " : " ^ format_type tau ^ "\n")
-      else
-        raise (Parse_error "unbound variables")
-  with
-    Parse_error s | Eval_error s | Type_error s -> print_string ("error: " ^ s ^ "\n"))
+*)
