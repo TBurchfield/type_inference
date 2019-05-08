@@ -1,5 +1,3 @@
-open Syntax
-
 exception Type_error of string
 exception Eval_error of string
 

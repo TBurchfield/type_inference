@@ -1,3 +1,5 @@
+module SS = Set.Make(String)
+
 let is_universal (tau : typ) : bool = match tau with
   | Univ (_, _) -> true
   | _ -> false
@@ -14,29 +16,33 @@ let rec free_type_vars (tau: typ) = match tau with
 let universalize (tau: typ) s =
   SS.fold (fun w typ_acc -> Univ (w, typ_acc)) s
 
-let rec subst_type (w:string) (tau1 : typ) (tau2 : typ) = match tau1 with
-  | Nat | Bool -> tau1
+let rec subst_type (w:string) (tau_original : typ) (tau2 : typ) = match tau_original with
+  | Nat | Bool -> tau_original
   | Arrow (tau3, tau4) -> Arrow (subst_type w tau3 tau2, subst_type w tau4 tau2)
   | TypeVar x when x=w -> tau2
-  | TypeVar _ -> tau1
-  | Univ (x, _) when x=w -> tau1
+  | TypeVar _ -> tau_original
+  | Univ (x, _) when x=w -> tau_original
   | Univ (x, tau3) -> Univ (x, (subst_type w tau3 tau2))
 
+
+let constraint_mappee_maker (w: string) (tau_new : typ) =
+  fun ((tau1, tau2) : (typ * typ)) -> (subst_type w tau1 tau_new; subst_type w tau2 tau_new)
 
 let rec freshen (tau : typ) : typ = match tau with
   | Univ (x1, tau1) -> freshen (subst_type x1 tau1 (get_fresh))
   | _ -> tau
 
-let rec unify (tau: typ) (c_list: (typ, (typ * typ) list) =
+let rec unify (tau: typ) (c_list: (typ * typ) list) =
   match c_list with
   | (tau1, tau2)::xs when tau1 = tau2 -> unify tau xs
   | (TypeVar w, tau2)::xs when not SS.member w (free_type_vars tau2) ->
-    (* TODO::: CONTIUE HERE *)
-    let tau_rec = subst_type x and
-    let c_list_rec = List.map
+    unify (subst_type w tau tau2) (List.map (constraint_mappee_maker w tau2) xs)
+  | (tau2, Typevar w)::xs when not SS.member w (free_type_vars tau2) ->
+    unify (subst_type w tau tau2) (List.map (constraint_mappee_maker w tau2) xs)
+  | (Arrow (tau1a, tau1b), Arrow (tau2a, tau2b))::xs -> unify tau (tau1a, tau2a)::(tau1b, tau2b)::xs
   | [] -> tau
 
-let rec typecheck_r (t:term) (context: (string * typ) list) : (typ, (typ * typ) list) =
+let rec typecheck_r (t: term) (context: (string * typ) list) : (typ * ((typ * typ) list)) =
   match t with
     | Var x -> [(freshen lookupthingy); []]
     | Lambda (x, t1) -> let tau1 = (get_fresh) and
@@ -75,20 +81,8 @@ let rec typecheck_r (t:term) (context: (string * typ) list) : (typ, (typ * typ) 
       c_list = (c_list1 @ c_list2 @ c_list3) and
       tau1 = unify tau1 c_list and
       tau2 = unify tau2 c_list and
-      tau3 = unify tau3 c_list and
-      if (tau1 = Bool) && (tau2 = tau3) then (tau2, c_list) else
-      raise TypeError ("don't do that")
-
-
-
-
-
-
-
-
-
-
-
+      tau3 = unify tau3 c_list in
+      if ((tau1 = true || tau1 = false) && (tau2 = tau3)) then (tau2, c_list) else (raise TypeError ("don't do that"))
 
 let typecheck t =
   let tau, constraints = typecheck_r t [] in

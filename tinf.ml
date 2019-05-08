@@ -1,7 +1,9 @@
-open Syntax
-open Pcf
+#load "/usr/lib/ocaml/unix.cma"
+#use "./starter/syntax.ml"
+#use "./starter/pcf.ml"
+#use "./reconstruction.ml"
 
-let () = read_lines "tinf> " (fun line ->
+let interp line = 
   try
     let t = parse_term line in
       if SS.is_empty (free_vars t) then
@@ -12,4 +14,6 @@ let () = read_lines "tinf> " (fun line ->
         raise (Parse_error "unbound variables")
   with
     Parse_error s | Eval_error s | Type_error s -> print_string ("error: " ^ s ^ "\n")
-    Recons_error s -> print_string ("type reconstruction error: " ^ s ^ "\n"))
+    | Recons_error s -> print_string ("type reconstruction error: " ^ s ^ "\n")
+
+let () = read_lines "tinf> " interp
