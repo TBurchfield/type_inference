@@ -1,0 +1,31 @@
+0
+true
+succ 0
+iszero (succ 0)
+let x = 0 in (iszero x)
+let f = \x. \y. x in f (f 0 true) 0
+(\b. \n. (let f = \x.x in if f b then f n else (succ 0))) true (succ 0)
+(\x. 0) true
+(\x. x) true
+(\x. y) true
+(\x. \y. x) 0 (succ 0)
+(\x. \y. y) 0 (succ 0)
+(\x. \x. x) 0 (succ 0)
+(\x. \y. z) 0 (succ 0)
+(\x. \y. x) (succ y) 0
+(\x. (\y. succ x) (\z. succ x)) 0
+(\x. succ x) ((\y. succ y) 0)
+(\x. \y. \z. x (y (z 0))) (\z. iszero z) (\z. pred z) (\z. succ z)
+let
+(let k = 0 in \x. k) (succ 0)
+(\x. succ x) (pred 0)
+let f = \x. succ (succ x) in f (f 0)
+(\x. let x = 0 in true) false
+let y = (\x. x) 0 in x
+fix
+fix (\f. \x. if iszero x then 0 else succ (succ (f (pred x)))) (succ (succ (succ 0)))
+let + = fix (\+. \x. \y. if iszero x then y else succ (+ (pred x) y)) in let * = fix (\*. \x. \y. if iszero x then 0 else + y (* (pred x) y)) in let factorial = fix (\f. \x. if iszero x then succ 0 else * x (f (pred x))) in factorial 0
+let + = fix (\+. \x. \y. if iszero x then y else succ (+ (pred x) y)) in let * = fix (\*. \x. \y. if iszero x then 0 else + y (* (pred x) y)) in let factorial = fix (\f. \x. if iszero x then succ 0 else * x (f (pred x))) in factorial (succ 0)
+let + = fix (\+. \x. \y. if iszero x then y else succ (+ (pred x) y)) in let * = fix (\*. \x. \y. if iszero x then 0 else + y (* (pred x) y)) in let factorial = fix (\f. \x. if iszero x then succ 0 else * x (f (pred x))) in factorial (succ (succ 0))
+let + = fix (\+. \x. \y. if iszero x then y else succ (+ (pred x) y)) in let * = fix (\*. \x. \y. if iszero x then 0 else + y (* (pred x) y)) in let factorial = fix (\f. \x. if iszero x then succ 0 else * x (f (pred x))) in factorial (succ (succ (succ 0)))
+let + = fix (\+. \x. \y. if iszero x then y else succ (+ (pred x) y)) in let * = fix (\*. \x. \y. if iszero x then 0 else + y (* (pred x) y)) in let factorial = fix (\f. \x. if iszero x then succ 0 else * x (f (pred x))) in factorial (succ (succ (succ (succ 0))))
