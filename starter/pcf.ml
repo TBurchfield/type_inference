@@ -1,5 +1,6 @@
 exception Type_error of string
 exception Eval_error of string
+exception Recons_error of string
 
 module SS = Set.Make(String)
 let fold_union ss = List.fold_left SS.union SS.empty ss

@@ -14,7 +14,7 @@ let rec free_type_vars (tau: typ) = match tau with
   | _ -> SS.empty
 
 let universalize (tau: typ) s =
-  SS.fold (fun w typ_acc -> Univ (w, typ_acc)) s
+  SS.fold (fun w typ_acc -> Univ (w, typ_acc)) s tau
 
 let rec subst_type (w:string) (tau_original : typ) (tau2 : typ) = match tau_original with
   | Nat | Bool -> tau_original
@@ -31,7 +31,7 @@ let constraint_mappee_maker (w: string) (tau_new : typ) =
 let current = ref ""
 let get_fresh : typ =
   current := (!current) ^ "0";
-  TypeVar current;
+  TypeVar !current
 
 let rec freshen (tau : typ) : typ = match tau with
   | Univ (x1, tau1) -> freshen (subst_type x1 tau1 (get_fresh))
@@ -45,53 +45,55 @@ let rec unify (tau: typ) (c_list: (typ * typ) list) =
   | (tau2, TypeVar w)::xs when not (SS.mem w (free_type_vars tau2)) ->
     unify (subst_type w tau tau2) (List.map (constraint_mappee_maker w tau2) xs)
   | (Arrow (tau1a, tau1b), Arrow (tau2a, tau2b))::xs -> unify tau ((tau1a, tau2a)::(tau1b,
-  tau2b)::xs)
+    tau2b)::xs)
   | [] -> tau
+  | _ -> raise (Recons_error "no dont do that please")
 
 let look_up (context: (string * typ) list) (var : string) =
-  List.find (fun (x, _) -> x = var) context
+  let a, b = List.find (fun (x, _) -> x = var) context in b
 
 let rec typecheck_r (t: term) (context: (string * typ) list) : (typ * ((typ * typ) list)) =
   match t with
-    | Var x -> [(freshen (look_up context x)); []] (* TODO: make this not lookupthingy *)
-    | Lambda (x, t1) -> let tau1 = (get_fresh) and
-      tau2, c_list = typecheck_r t1 tau1::context in
-      [Arrow (tau1, tau2); c_list]
+    | Var x -> ((freshen (look_up context x)), [])
+    | Lambda (x, t1) -> let tau1 = (get_fresh) in
+    let (tau2, c_list) = typecheck_r t1 ((x, tau1)::context) in
+      (Arrow (tau1, tau2), c_list)
     | App (t1, t2) -> let tau1, c_list1 = typecheck_r t1 context and
       tau2, c_list2 = typecheck_r t2 context and
       tau3 = (get_fresh) in
-      tau3, (tau1, Arrow (tau2, tau3))::(append c_list1 c_list2)
+      tau3, (tau1, Arrow (tau2, tau3))::(c_list1 @ c_list2)
     | Fix t1 -> let tau1, c_list1 = typecheck_r t1 context and
       tau2 = (get_fresh) in
       tau2, (tau1, Arrow (tau2, tau2))::c_list1
-    | Let (x, t1, t2) -> let tau1, c_list1 = typecheck_r t1 context and
-      tau1 = unify tau1 c_list1 and
-      tau1 = universalize tau1 (SS.diff (free_type_vars tau1) (context_to_vars context)) in
-      typecheck_r t2 (x, tau1)::context
+    | Let (x, t1, t2) -> let tau1, c_list1 = typecheck_r t1 context in 
+      let tau11 = unify tau1 c_list1 in
+      let tau111 = universalize tau11 (SS.diff (free_type_vars tau11) (context_to_vars context)) in
+      typecheck_r t2 ((x, tau111)::context)
     | Zero -> (Nat, [])
     | True | False -> (Bool, [])
     | Succ t1 | Pred t1 ->
-      let tau1, c_list = typecheck_r t1 context and
-      tau1 = unify tau1 c_list in
-      (match tau1 with
-      | Nat -> Nat
-      | _ -> (raise TypeError ("Can't do " ^ format_term t ^ " since " ^ format_term t1 ^ " non number\n")))
+      let tau1, c_list = typecheck_r t1 context in
+      let tau11 = unify tau1 c_list in
+      (match tau11 with
+      | Nat -> (Nat, [])
+      | _ -> raise (Type_error ("Can't do " ^ format_term t ^ " since " ^ format_term t1 ^ " non number\n")))
     | IsZero t1 ->
-      let tau1, c_list = typecheck_r t1 context and
-      tau1 = unify tau1 c_list in
-      (match tau1 with
-      | Nat -> Bool
-      | _ -> (raise TypeError ("Can't do " ^ format_term t ^ " since " ^ format_term t1 ^ " non number\n")))
+      let tau1, c_list = typecheck_r t1 context in
+      let tau11 = unify tau1 c_list in
+      (match tau11 with
+      | Nat -> (Bool, [])
+      | _ -> raise (Type_error ("Can't do " ^ format_term t ^ " since " ^ format_term t1 ^ " non number\n")))
 
     | If (t1, t2, t3) ->
-      let tau1, c_list1 = typecheck_r t1 context and
-      tau2, c_list2 = typecheck_r t2 context and
-      tau3, c_list3 = typecheck_r t3 context and
-      c_list = (c_list1 @ c_list2 @ c_list3) and
-      tau1 = unify tau1 c_list and
-      tau2 = unify tau2 c_list and
-      tau3 = unify tau3 c_list in
-      if ((tau1 = true || tau1 = false) && (tau2 = tau3)) then (tau2, c_list) else (raise TypeError ("don't do that"))
+      let tau1, c_list1 = typecheck_r t1 context in
+      let tau2, c_list2 = typecheck_r t2 context in
+      let tau3, c_list3 = typecheck_r t3 context in
+      let c_list = (c_list1 @ c_list2 @ c_list3) in
+      let tau11 = unify tau1 c_list in
+      let tau22 = unify tau2 c_list in
+      let tau33 = unify tau3 c_list in
+      if ((tau11 = Bool) && (tau22 = tau33)) then (tau22, c_list) else (raise (Type_error "don't do that"))
+    | _ -> raise (Recons_error "no dont do that please")
 
 let typecheck t =
   let tau, constraints = typecheck_r t [] in
