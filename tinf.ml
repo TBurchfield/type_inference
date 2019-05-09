@@ -9,7 +9,7 @@ let interp line =
       if SS.is_empty (free_vars t) then
         let tau = typecheck t in
         let v = eval_term t in
-          print_string (format_term v ^ " : " ^ format_type tau ^ "\n")
+          print_string (format_term v ^ " : " ^ format_type1 tau ^ "\n")
       else
         raise (Parse_error "unbound variables")
   with

@@ -127,7 +127,7 @@ let parse_term s =
     | [] -> t
     | tok::w -> raise (Parse_error ("unexpected '" ^ tok ^ "' after term"))
 
-let format_type (tau:typ) : string =
+let format_type1 (tau:typ) : string =
   let rec arrow tau =
     match tau with
     | Arrow (tau1, tau2) -> base tau1 ^ "->" ^ arrow tau2
@@ -146,7 +146,7 @@ let format_term (t:term) : string =
     match t with
     | If (t1, t2, t3) -> "if " ^ abs t1 ^ " then " ^ abs t2 ^ " else " ^ abs t3
     | Lambda (x, t) -> "λ" ^ x ^ ". " ^ abs t
-    | TypedLambda (x, tau, t) -> "λ" ^ x ^ ":" ^ format_type tau ^ ". " ^ abs t
+    | TypedLambda (x, tau, t) -> "λ" ^ x ^ ":" ^ format_type1 tau ^ ". " ^ abs t
     | Let (x1, t2, t3) -> "let " ^ x1 ^ " = " ^ abs t2 ^ " in " ^ abs t3
     | _ -> app t
   and app t =
