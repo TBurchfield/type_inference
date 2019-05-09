@@ -5,7 +5,7 @@ let is_universal (tau : typ) : bool = match tau with
   | _ -> false
 
 let context_to_vars (context: (string * typ) list) =
-  List.fold_left (fun acc x -> SS.union (match x with TypeVar w -> SS.singleton w | _ -> SS.empty) acc) SS.empty context
+  List.fold_left (fun acc x -> SS.union (match x with (_, TypeVar w) -> SS.singleton w | _ -> SS.empty) acc) SS.empty context
 
 let rec free_type_vars (tau: typ) = match tau with
   | Univ (x1, tau1) -> SS.remove x1 (free_type_vars tau1)
@@ -26,7 +26,9 @@ let rec subst_type (w:string) (tau_original : typ) (tau2 : typ) = match tau_orig
 
 
 let constraint_mappee_maker (w: string) (tau_new : typ) =
-  fun ((tau1, tau2) : (typ * typ)) -> (subst_type w tau1 tau_new; subst_type w tau2 tau_new)
+  fun ((tau1, tau2) : (typ * typ)) -> ((subst_type w tau1 tau_new), (subst_type w tau2 tau_new))
+
+let get_fresh: typ = TypeVar "x" (* TODO: this for real*)
 
 let rec freshen (tau : typ) : typ = match tau with
   | Univ (x1, tau1) -> freshen (subst_type x1 tau1 (get_fresh))
@@ -35,16 +37,20 @@ let rec freshen (tau : typ) : typ = match tau with
 let rec unify (tau: typ) (c_list: (typ * typ) list) =
   match c_list with
   | (tau1, tau2)::xs when tau1 = tau2 -> unify tau xs
-  | (TypeVar w, tau2)::xs when not SS.member w (free_type_vars tau2) ->
+  | (TypeVar w, tau2)::xs when not (SS.mem w (free_type_vars tau2)) ->
     unify (subst_type w tau tau2) (List.map (constraint_mappee_maker w tau2) xs)
-  | (tau2, Typevar w)::xs when not SS.member w (free_type_vars tau2) ->
+  | (tau2, TypeVar w)::xs when not (SS.mem w (free_type_vars tau2)) ->
     unify (subst_type w tau tau2) (List.map (constraint_mappee_maker w tau2) xs)
-  | (Arrow (tau1a, tau1b), Arrow (tau2a, tau2b))::xs -> unify tau (tau1a, tau2a)::(tau1b, tau2b)::xs
+  | (Arrow (tau1a, tau1b), Arrow (tau2a, tau2b))::xs -> unify tau ((tau1a, tau2a)::(tau1b,
+  tau2b)::xs)
   | [] -> tau
+
+let look_up (context: (string * typ) list) (var : typ) =
+  List.find (fun (_, x) -> x = var) context
 
 let rec typecheck_r (t: term) (context: (string * typ) list) : (typ * ((typ * typ) list)) =
   match t with
-    | Var x -> [(freshen lookupthingy); []]
+    | Var x -> [(freshen (look_up context x)); []] (* TODO: make this not lookupthingy *)
     | Lambda (x, t1) -> let tau1 = (get_fresh) and
       tau2, c_list = typecheck_r t1 tau1::context in
       [Arrow (tau1, tau2); c_list]
