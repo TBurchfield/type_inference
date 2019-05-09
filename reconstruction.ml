@@ -28,7 +28,10 @@ let rec subst_type (w:string) (tau_original : typ) (tau2 : typ) = match tau_orig
 let constraint_mappee_maker (w: string) (tau_new : typ) =
   fun ((tau1, tau2) : (typ * typ)) -> ((subst_type w tau1 tau_new), (subst_type w tau2 tau_new))
 
-let get_fresh: typ = TypeVar "x" (* TODO: this for real*)
+let current = ref ""
+let get_fresh : typ =
+  current := (!current) ^ "0";
+  TypeVar current;
 
 let rec freshen (tau : typ) : typ = match tau with
   | Univ (x1, tau1) -> freshen (subst_type x1 tau1 (get_fresh))
@@ -45,8 +48,8 @@ let rec unify (tau: typ) (c_list: (typ * typ) list) =
   tau2b)::xs)
   | [] -> tau
 
-let look_up (context: (string * typ) list) (var : typ) =
-  List.find (fun (_, x) -> x = var) context
+let look_up (context: (string * typ) list) (var : string) =
+  List.find (fun (x, _) -> x = var) context
 
 let rec typecheck_r (t: term) (context: (string * typ) list) : (typ * ((typ * typ) list)) =
   match t with
